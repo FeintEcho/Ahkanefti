@@ -1,5 +1,8 @@
 import discord
 import json
+import re
+import math
+import random
 
 #Discord uses their own version of Markdown. 
     #Any text that is prefaced with 3 ` and followed by 3 ` (backticks) is used as a codeblock
@@ -38,7 +41,8 @@ async def on_message(message):
         command = message.content.lstrip('!').lower().split(sep=' ')
 
         if command[0] == 'roll':
-            await message.channel.send('Rolling')
+            for i in range(len(command)-1):
+                await message.channel.send(diceRoller(command[i+1]))
             
         elif command[0] == 'init':
             for i in range(len(command)-1):
@@ -51,12 +55,68 @@ async def on_message(message):
         else:
             await message.channel.send('ERROR: Unrecognized command.')
 
+    if message.content ==('--version'):
+        await message.channel.send('Version 0.1')
+
 
 
 #
 def diceRoller(rollCommand):
-    return 'ERROR'
+    result = re.fullmatch(r'([0-9]+d[0-9]+)([\+\-][0-9]+){0,1}(adv|dis){0,1}', rollCommand.lower())
 
+    #Valid Result
+    if result is not None: 
+        currentCommand = rollCommand.lower().rstrip('advdis')
+        
+        rollAttributes = re.split('[d+-]+', currentCommand)
+        
+        diceCount = rollAttributes[0]
+        diceSize = rollAttributes[1]
+        if re.search(r'\+', currentCommand) is not None:
+            modAtr = '+'
+            modSize = rollAttributes[2]
+        elif re.search(r'\-', currentCommand) is not None:
+            modAtr = '-'
+            modSize = rollAttributes[2]
+        else:
+            modAtr = ''
+            modSize = ''
+
+        #Rolls the specified dice and adds to a list for later recall
+        rollSets = []
+        if 'adv' in rollCommand.lower() or 'dis' in rollCommand.lower():
+            compSets = 2
+        else:
+            compSets = 1
+
+        rolledValues = []
+        for i in range(compSets):
+            for di in range(int(diceCount)):
+                rolledValues.append(math.floor(random.uniform(1, int(diceSize))))
+            rollSets.append(rolledValues[i])
+
+        if 'adv' in rollCommand.lower():
+            usedRoll = max(sum(rollSets[0]), sum(rollSets(1)))
+        elif 'dis' in rollCommand.lower():
+            usedRoll = min(sum(rollSets[0]), sum(rollSets(1)))
+        else:
+            usedRoll = sum(rollSets[0])
+
+        if modAtr == '+':
+            roll = usedRoll + int(modSize)
+        elif modAtr == '-':
+            roll = usedRoll - int(modSize)
+        else:
+            roll = usedRoll
+
+        return f'Your rolls {rollSets}{modAtr}{modSize} equaled {roll}'
+
+
+    #Invalid Result
+    else:
+        return f'ERROR: {command[i]} is an invalid roll.\n'
+
+    re.purge()
 
 
 #Implements an Initiative System
@@ -101,4 +161,4 @@ def conditionPull(suppliedCondition):
         if i == len(data) - 1:
             return f'```ERROR: Condition {suppliedCondition} was not found. Please try again.```'
 
-client.run('<bot token here>')
+client.run('<token>')
