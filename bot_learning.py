@@ -1,7 +1,6 @@
 import discord
 import json
 import re
-import math
 import random
 
 #Discord uses their own version of Markdown. 
@@ -18,6 +17,10 @@ import random
 with open("pathfinder_2e_conditions.json", "r") as read_file:
     data = json.load(read_file)
 
+#Holds my bot token. Creat your own json file for your own token.
+with open(r"..\secret.json", "r") as read_file:
+    secret = json.load(read_file)
+
 #Actual Discord Client
 client = discord.Client()
 
@@ -30,6 +33,7 @@ async def on_ready():
 #Bot is reading messages passed through channel.
 @client.event
 async def on_message(message):
+
     #Bot ignores own messages.
     if message.author == client.user:
         return
@@ -40,9 +44,10 @@ async def on_message(message):
     if message.content.startswith('!'):
         command = message.content.lstrip('!').lower().split(sep=' ')
 
+        #multiple rolls can be issued.
         if command[0] == 'roll':
             for i in range(len(command)-1):
-                await message.channel.send(diceRoller(command[i+1]))
+                await message.channel.send(embed=diceRoller(command[i+1]))
             
         elif command[0] == 'init':
             for i in range(len(command)-1):
@@ -55,12 +60,8 @@ async def on_message(message):
         else:
             await message.channel.send('ERROR: Unrecognized command.')
 
-    if message.content ==('--version'):
-        await message.channel.send('Version 0.1')
-
-
-
-#
+#Dice Roller Function.
+#This doesn't have the advantage/disadvantage logic fleshed out yet even though the options exist.
 def diceRoller(rollCommand):
     result = re.fullmatch(r'([0-9]+d[0-9]+)([\+\-][0-9]+){0,1}(adv|dis){0,1}', rollCommand.lower())
 
@@ -82,39 +83,37 @@ def diceRoller(rollCommand):
             modAtr = ''
             modSize = ''
 
-        #Rolls the specified dice and adds to a list for later recall
-        rollSets = []
-        if 'adv' in rollCommand.lower() or 'dis' in rollCommand.lower():
-            compSets = 2
-        else:
-            compSets = 1
-
         rolledValues = []
-        for i in range(compSets):
-            for di in range(int(diceCount)):
-                rolledValues.append(math.floor(random.uniform(1, int(diceSize))))
-            rollSets.append(rolledValues[i])
-
-        if 'adv' in rollCommand.lower():
-            usedRoll = max(sum(rollSets[0]), sum(rollSets(1)))
-        elif 'dis' in rollCommand.lower():
-            usedRoll = min(sum(rollSets[0]), sum(rollSets(1)))
-        else:
-            usedRoll = sum(rollSets[0])
+        for di in range(int(diceCount)):
+            rolledValues.append(random.randint(1, int(diceSize)))
 
         if modAtr == '+':
-            roll = usedRoll + int(modSize)
+            roll = sum(rolledValues) + int(modSize)
         elif modAtr == '-':
-            roll = usedRoll - int(modSize)
+            roll = sum(rolledValues) - int(modSize)
         else:
-            roll = usedRoll
+            roll = sum(rolledValues)
 
-        return f'Your rolls {rollSets}{modAtr}{modSize} equaled {roll}'
+        response = discord.Embed(
+            title=f'You rolled {currentCommand}', 
+
+            colour= 0x34ebd8,
+            description=f'Results... {rolledValues}{modAtr}{modSize} for a total of {roll}!'
+            )
+
+        # return f'Your rolls {rolledValues}{modAtr}{modSize} equaled {roll}'
+        return response
 
 
     #Invalid Result
     else:
-        return f'ERROR: {command[i]} is an invalid roll.\n'
+        response = discord.Embed(
+            title=f'You tried to roll {currentCommand}', 
+            colour= 0xa00000,
+            description=f'ERROR: Invalid roll command, please try again!'
+            )
+        return response
+        #return f'ERROR: {command[i]} is an invalid roll.\n'
 
     re.purge()
 
@@ -161,4 +160,4 @@ def conditionPull(suppliedCondition):
         if i == len(data) - 1:
             return f'```ERROR: Condition {suppliedCondition} was not found. Please try again.```'
 
-client.run('<token>')
+client.run(secret['token'])
